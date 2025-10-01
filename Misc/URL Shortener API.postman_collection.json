@@ -1,0 +1,82 @@
+{
+	"info": {
+		"_postman_id": "2afa6f6e-9da8-42e4-9102-e97a6a35c46c",
+		"name": "URL Shortener API",
+		"description": "Collection para testar a API de encurtamento de URLs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "48927141",
+		"_collection_link": "https://jv-alexandrel-3266488.postman.co/workspace/Jo%C3%A3o-Victor-Louren%C3%A7o's-Workspac~4bd68cdc-2c49-4393-8e13-9183a61535ae/collection/48927141-2afa6f6e-9da8-42e4-9102-e97a6a35c46c?action=share&source=collection_link&creator=48927141"
+	},
+	"item": [
+		{
+			"name": "Create Short URL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let resp = pm.response.json();",
+							"if (resp.shortKey) {",
+							"    pm.collectionVariables.set(\"shortKey\", resp.shortKey);",
+							"    console.log(\"shortKey atualizado:\", resp.shortKey);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"url\": \"https://globo.com\",\n  \"expiresAt\": null\n}"
+				},
+				"url": "{{baseUrl}}/api/urls"
+			},
+			"response": []
+		},
+		{
+			"name": "Get URL Info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "{{baseUrl}}/api/urls/{{shortKey}}"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete URL",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "{{baseUrl}}/api/urls/{{shortKey}}"
+			},
+			"response": []
+		},
+		{
+			"name": "Redirect to Original",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "{{baseUrl}}/{{shortKey}}"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:30694"
+		},
+		{
+			"key": "shortKey",
+			"value": "abc123"
+		}
+	]
+}
