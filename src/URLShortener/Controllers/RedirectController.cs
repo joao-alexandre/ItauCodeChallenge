@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using URLShortener.Data;
+using URLShortener.Services;
 
 namespace URLShortener.Controllers
 {
@@ -10,9 +11,12 @@ namespace URLShortener.Controllers
     {
         private readonly AppDbContext _context;
 
-        public RedirectController(AppDbContext context)
+        private readonly ICacheService _cache;
+
+        public RedirectController(AppDbContext context, ICacheService cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         [HttpGet("{shortKey}")]
@@ -25,6 +29,11 @@ namespace URLShortener.Controllers
 
             url.Hits++;
             await _context.SaveChangesAsync();
+
+            if (_cache != null)
+            {
+                await _cache.SetAsync(url.ShortKey, url, TimeSpan.FromMinutes(60));
+            }
 
             return Redirect(url.OriginalUrl);
         }
