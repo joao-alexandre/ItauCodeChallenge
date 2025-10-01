@@ -1,3 +1,6 @@
+<img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/954bf37d-d7a5-4f94-9c15-cb7847125bfd" />
+
+
 # URL Shortener API
 
 Sistema backend de encurtamento de URLs com cache Redis, métricas via Prometheus e dashboards no Grafana.
@@ -69,11 +72,13 @@ docker-compose up --build
   - Usuário/admin: `admin/admin`
 - **Prometheus:** [http://localhost:9090](http://localhost:9090)
 
-## Observabilidade no Grafana
+## Observabilidade
+
+<img width="1619" height="651" alt="image" src="https://github.com/user-attachments/assets/8cd359fe-e582-44b2-8e5e-82d02dc3db86" />
+
+<img width="1908" height="419" alt="image" src="https://github.com/user-attachments/assets/b036848e-5a3c-48c1-8a4e-bbcdfe60c99a" />
+
 
 - Top 10 URLs mais acessadas
 - Hits por URL ao longo do tempo
 - Taxa de cache hits/misses
-- Latência da API
-- Erros 404 / 500
-- Crescimento de URLs criadas
