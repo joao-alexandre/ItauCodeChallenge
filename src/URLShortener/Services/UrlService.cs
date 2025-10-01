@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using URLShortener.Services;
-using URLShortener.Models;
-using URLShortener.Utils;
-using URLShortener.Data;
-using Prometheus;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Prometheus;
+using StackExchange.Redis;
 using System.Text.Json;
+using URLShortener.Data;
+using URLShortener.Models;
+using URLShortener.Services;
+using URLShortener.Utils;
 
 namespace URLShortener.Services
 {
@@ -22,6 +24,7 @@ namespace URLShortener.Services
 
         private readonly AppDbContext _db;
         private readonly ILogger<UrlService> _logger;
+        
         public UrlService(AppDbContext db, ILogger<UrlService> logger)
         {
             _db = db;
@@ -29,6 +32,11 @@ namespace URLShortener.Services
         }
 
         private readonly ICacheService _cache;
+
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         public UrlService(AppDbContext db, ILogger<UrlService> logger, ICacheService cache)
         {
@@ -68,21 +76,23 @@ namespace URLShortener.Services
 
         public async Task<UrlMapping?> GetByShortKeyAsync(string shortKey, CancellationToken ct = default)
         {
-            var cached = await _cache.GetStringAsync(shortKey);
+            if (string.IsNullOrWhiteSpace(shortKey))
+                return null;
 
-            if (cached != null)
-            {
-                _logger.LogInformation("Cache hit for {ShortKey}", shortKey);
-                return JsonSerializer.Deserialize<UrlMapping>(cached!);
-            }
-
-            var mapping = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
-
+            var mapping = await _cache.GetAsync<UrlMapping>(shortKey);
             if (mapping != null)
             {
-                await _cache.SetStringAsync(shortKey, JsonSerializer.Serialize(mapping), TimeSpan.FromMinutes(10));
-                _logger.LogInformation("Cache miss for {ShortKey}, loaded from DB", shortKey);
+                _logger.LogInformation("Cache hit for {ShortKey}", shortKey);
+                return mapping;
             }
+
+            mapping = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+            if (mapping == null)
+                return null;
+
+            _logger.LogInformation("Cache miss for {ShortKey}, loaded from DB");
+
+            await _cache.SetAsync(mapping.ShortKey, mapping, TimeSpan.FromMinutes(60));
 
             return mapping;
         }
@@ -95,6 +105,20 @@ namespace URLShortener.Services
             _db.UrlMappings.Remove(m);
             await _db.SaveChangesAsync(ct);
             UrlDeleted.Inc();
+
+            try
+            {
+                if (_cache != null)
+                {
+                    await _cache.RemoveAsync(shortKey);
+                    await _cache.RemoveAsync($"hits:{shortKey}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to remove cache entries for {ShortKey}", shortKey);
+            }
+
             return true;
         }
 
@@ -108,6 +132,17 @@ namespace URLShortener.Services
                 hits++;
                 await _cache.SetStringAsync($"hits:{shortKey}", hits.ToString());
                 UrlHits.Inc();
+
+                var mDb = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+                if (mDb != null)
+                {
+                    mDb.Hits = hits;
+                    await _db.SaveChangesAsync(ct);
+
+                    await _cache.SetStringAsync(shortKey, JsonSerializer.Serialize(mDb), TimeSpan.FromMinutes(10));
+
+                    return mDb;
+                }
             }
             else
             {
@@ -122,8 +157,8 @@ namespace URLShortener.Services
                 hits = mDb.Hits;
                 await _db.SaveChangesAsync(ct);
 
-                // Atualizar cache
                 await _cache.SetStringAsync($"hits:{shortKey}", hits.ToString());
+                await _cache.SetStringAsync(shortKey, JsonSerializer.Serialize(mDb), TimeSpan.FromMinutes(10));
                 UrlHits.Inc();
 
                 return mDb;

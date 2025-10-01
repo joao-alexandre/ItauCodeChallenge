@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace URLShortener.Models
 {
@@ -12,9 +13,11 @@ namespace URLShortener.Models
 
         [Required]
         [MaxLength(64)]
+        [JsonPropertyName("shortKey")]
         public string ShortKey { get; set; } = null!;
 
         [Required]
+        [JsonPropertyName("originalUrl")]
         public string OriginalUrl { get; set; } = null!;
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
