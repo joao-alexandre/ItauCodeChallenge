@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace URLShortener.Models
 {
-    [Table("url_mappings")] // garante que bate com a tabela do Postgres
+    [Table("url_mappings")]
     public class UrlMapping
     {
         [Key]
