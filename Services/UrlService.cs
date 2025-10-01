@@ -5,6 +5,7 @@ using URLShortener.Utils;
 using URLShortener.Data;
 using Prometheus;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace URLShortener.Services
 {
@@ -25,6 +26,15 @@ namespace URLShortener.Services
         {
             _db = db;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        private readonly ICacheService _cache;
+
+        public UrlService(AppDbContext db, ILogger<UrlService> logger, ICacheService cache)
+        {
+            _db = db;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
         public async Task<UrlMapping> CreateAsync(string originalUrl, DateTimeOffset? expiresAt = null, CancellationToken ct = default)
@@ -48,6 +58,7 @@ namespace URLShortener.Services
                     _db.UrlMappings.Add(m);
                     await _db.SaveChangesAsync(ct);
                     _logger.LogInformation("UrlMapping saved with ShortKey {ShortKey}", m.ShortKey);
+                    await _cache.SetAsync(m.ShortKey, m, TimeSpan.FromMinutes(60));
                     return m;
                 }
             }
@@ -55,8 +66,26 @@ namespace URLShortener.Services
             throw new InvalidOperationException("Could not generate unique short key");
         }
 
-        public Task<UrlMapping?> GetByShortKeyAsync(string shortKey, CancellationToken ct = default)
-            => _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+        public async Task<UrlMapping?> GetByShortKeyAsync(string shortKey, CancellationToken ct = default)
+        {
+            var cached = await _cache.GetStringAsync(shortKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("Cache hit for {ShortKey}", shortKey);
+                return JsonSerializer.Deserialize<UrlMapping>(cached!);
+            }
+
+            var mapping = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+
+            if (mapping != null)
+            {
+                await _cache.SetStringAsync(shortKey, JsonSerializer.Serialize(mapping), TimeSpan.FromMinutes(10));
+                _logger.LogInformation("Cache miss for {ShortKey}, loaded from DB", shortKey);
+            }
+
+            return mapping;
+        }
 
         public async Task<bool> DeleteByShortKeyAsync(string shortKey, CancellationToken ct = default)
         {

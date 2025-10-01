@@ -12,38 +12,42 @@ services:
       - db_data:/var/lib/postgresql/data
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: urlshortener_api
     depends_on:
       - db
+      - redis
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=urlshortener;Username=postgres;Password=postgres
-      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__Redis=redis:6379
     ports:
       - "5000:5000"
-    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
     image: grafana/grafana
     container_name: grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SECURITY_ADMIN_USER=admin
     ports:
       - "3000:3000"
-    depends_on:
-      - prometheus
+
+  redis:
+    image: redis:7-alpine
+    container_name: urlshortener_redis
+    ports:
+      - "6379:6379"
     volumes:
-      - grafana_data:/var/lib/grafana
+      - redis_data:/data
 
 volumes:
   db_data:
-  grafana_data:
+  redis_data:
