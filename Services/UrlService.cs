@@ -100,17 +100,41 @@ namespace URLShortener.Services
 
         public async Task<UrlMapping?> IncrementHitsAsync(string shortKey, CancellationToken ct = default)
         {
-            var m = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+            var cachedHits = await _cache.GetStringAsync($"hits:{shortKey}");
+            int hits;
 
-            if (m == null)
+            if (cachedHits != null && int.TryParse(cachedHits, out hits))
             {
-                _logger.LogWarning("IncrementHitsAsync: short key not found: {ShortKey}", shortKey);
-                return null;
+                hits++;
+                await _cache.SetStringAsync($"hits:{shortKey}", hits.ToString());
+                UrlHits.Inc();
+            }
+            else
+            {
+                var mDb = await _db.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey, ct);
+                if (mDb == null)
+                {
+                    _logger.LogWarning("IncrementHitsAsync: short key not found: {ShortKey}", shortKey);
+                    return null;
+                }
+
+                mDb.Hits++;
+                hits = mDb.Hits;
+                await _db.SaveChangesAsync(ct);
+
+                // Atualizar cache
+                await _cache.SetStringAsync($"hits:{shortKey}", hits.ToString());
+                UrlHits.Inc();
+
+                return mDb;
             }
 
-            m.Hits++;
-            UrlHits.Inc();
-            await _db.SaveChangesAsync(ct);
+            var m = new UrlMapping
+            {
+                ShortKey = shortKey,
+                Hits = hits
+            };
+
             return m;
         }
     }
