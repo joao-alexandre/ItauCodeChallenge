@@ -1,35 +1,41 @@
 using Microsoft.EntityFrameworkCore;
 using URLShortener.Data;
 using URLShortener.Services;
+using Prometheus;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Host.UseSerilog((ctx, lc) =>
+{
+    lc.ReadFrom.Configuration(ctx.Configuration, sectionName: "Serilog")
+      .Enrich.FromLogContext();
+});
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Postgres connection
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Services
 builder.Services.AddScoped<IUrlService, UrlService>();
 
-// Swagger
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddControllers();
+//FUNCIONA DEMONIO PELO AMOR DE DEUS
+Metrics.SuppressDefaultMetrics();
 
 var app = builder.Build();
 
-// Auto-migrate DB at startup (good for dev/demo)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
+
+app.UseRouting();
+
+app.UseHttpMetrics();
 
 if (app.Environment.IsDevelopment())
 {
@@ -39,5 +45,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapMetrics("/metrics");
 
 app.Run();
