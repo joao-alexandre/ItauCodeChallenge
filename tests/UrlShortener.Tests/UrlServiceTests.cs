@@ -28,7 +28,7 @@ namespace UrlShortener.Tests
         public async Task CreateAsync_ShouldCreateUrlMapping()
         {
             var db = CreateInMemoryDb();
-            var service = new UrlService(db);
+            var service = new UrlService(db, NullLogger<UrlService>.Instance);
 
             var originalUrl = "https://example.com";
 
@@ -44,7 +44,7 @@ namespace UrlShortener.Tests
         public async Task GetByShortKeyAsync_NonExistent_ReturnsNull()
         {
             var db = CreateInMemoryDb();
-            var service = new UrlService(db);
+            var service = new UrlService(db, NullLogger<UrlService>.Instance);
 
             var result = await service.GetByShortKeyAsync("nonexistent");
             Assert.Null(result);
@@ -55,7 +55,7 @@ namespace UrlShortener.Tests
         public async Task GetByShortKeyAsync_ShouldReturnMapping()
         {
             var db = GetDbContext();
-            var service = new UrlService(db);
+            var service = new UrlService(db, NullLogger<UrlService>.Instance);
 
             var mapping = await service.CreateAsync("https://globo.com");
             var result = await service.GetByShortKeyAsync(mapping.ShortKey);
@@ -68,7 +68,7 @@ namespace UrlShortener.Tests
         public async Task DeleteByShortKeyAsync_RemovesMapping()
         {
             var db = CreateInMemoryDb();
-            var service = new UrlService(db);
+            var service = new UrlService(db, NullLogger<UrlService>.Instance);
 
             var mapping = await service.CreateAsync("https://example.net");
             var removed = await service.DeleteByShortKeyAsync(mapping.ShortKey);
@@ -84,7 +84,7 @@ namespace UrlShortener.Tests
         public async Task IncrementHitsAsync_ShouldIncreaseHits()
         {
             var db = GetDbContext();
-            var service = new UrlService(db);
+            var service = new UrlService(db, NullLogger<UrlService>.Instance);
 
             var mapping = await service.CreateAsync("https://globo.com");
             await service.IncrementHitsAsync(mapping.ShortKey);
