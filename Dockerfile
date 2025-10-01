@@ -1,19 +1,19 @@
-# Build
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+COPY ["URLShortener.csproj", "./"]
+RUN dotnet restore "./URLShortener.csproj"
+COPY . .
+RUN dotnet build "URLShortener.csproj" -c Release -o /app/build
+RUN dotnet publish "URLShortener.csproj" -c Release -o /app/publish
 
-# Copia csproj primeiro para cache
-COPY src/UrlShortener/UrlShortener.csproj ./UrlShortener/
-WORKDIR /src/UrlShortener
-RUN dotnet restore
-
-# Copia o restante do código
-COPY src/UrlShortener/. ./
-RUN dotnet publish -c Release -o /app/publish
-
-# Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM base AS final
 WORKDIR /app
-COPY --from=build /app/publish ./
-ENV DOTNET_URLS=http://+:80
-ENTRYPOINT ["dotnet", "UrlShortener.dll"]
+COPY --from=build /app/publish .
+COPY wait-for-it.sh /wait-for-it.sh
+RUN chmod +x /wait-for-it.sh
+
+ENTRYPOINT ["/wait-for-it.sh", "db:5432", "--", "dotnet", "URLShortener.dll"]

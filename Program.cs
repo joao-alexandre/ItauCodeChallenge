@@ -12,7 +12,9 @@ builder.Host.UseSerilog((ctx, lc) =>
       .Enrich.FromLogContext();
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                       ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -47,5 +49,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapMetrics("/metrics");
+
+app.Urls.Add("http://0.0.0.0:5000");
 
 app.Run();
