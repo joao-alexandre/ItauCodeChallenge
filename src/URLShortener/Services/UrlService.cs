@@ -105,6 +105,20 @@ namespace URLShortener.Services
             _db.UrlMappings.Remove(m);
             await _db.SaveChangesAsync(ct);
             UrlDeleted.Inc();
+
+            try
+            {
+                if (_cache != null)
+                {
+                    await _cache.RemoveAsync(shortKey);
+                    await _cache.RemoveAsync($"hits:{shortKey}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to remove cache entries for {ShortKey}", shortKey);
+            }
+
             return true;
         }
 
