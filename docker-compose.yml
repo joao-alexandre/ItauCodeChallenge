@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    env_file: [.env.example]
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    environment:
+      - CONNECTION_STRING=${CONNECTION_STRING}
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: urlshortener
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
