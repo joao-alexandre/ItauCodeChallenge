@@ -23,10 +23,13 @@ namespace URLShortener.Controllers
         [HttpGet("{shortKey}")]
         public async Task<IActionResult> RedirectToOriginalUrl(string shortKey)
         {
-            var UrlHits = Metrics.CreateCounter("url_hits_total", "Total de hits por URL curta", new CounterConfiguration
+            var UrlHits = Metrics.CreateCounter("url_hits_total", "Total de hits por URL", new CounterConfiguration
             {
                 LabelNames = new[] { "shortKey" }
             });
+            
+            if (string.IsNullOrWhiteSpace(shortKey))
+                return BadRequest(new { message = "Short key is required." });  
 
             var url = await _context.UrlMappings.FirstOrDefaultAsync(u => u.ShortKey == shortKey);
 
