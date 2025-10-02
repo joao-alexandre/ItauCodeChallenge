@@ -3,7 +3,8 @@ using URLShortener.Dto;
 using URLShortener.Validators;
 using Xunit;
 
-public class CreateUrlRequestValidatorTests
+namespace UrlShortener.Tests;
+public class RequestValidatorTests
 {
     private readonly CreateUrlRequestValidator _validator = new();
 
